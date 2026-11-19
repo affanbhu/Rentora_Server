@@ -2,8 +2,7 @@
 import { Router } from "express";
 import { getHome } from "../controllers/home.controller.js";
 import { getHealth } from "../controllers/health.controller.js";
-import { validate } from "../middleware/validate.middleware.js";
-import { registerSchema } from "../validations/auth.validation.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -13,12 +12,12 @@ router.get("/", getHome);
 // Health check API
 router.get("/health", getHealth);
 
-// Temporary registration validation test
-router.post("/test-register", validate(registerSchema), (req, res) => {
+// Protected user profile API
+router.get("/auth/me", requireAuth, (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Registration data validated successfully!",
-    data: req.body,
+    message: "User profile retrieved successfully.",
+    user: res.locals.user,
   });
 });
 

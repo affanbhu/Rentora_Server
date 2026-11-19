@@ -2,6 +2,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { toNodeHandler } from "better-auth/node";
+
+import { auth } from "./config/auth.js";
 import { connectDB } from "./config/db.js";
 import apiRoutes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.middleware.js";
@@ -12,8 +15,13 @@ const app = express();
 
 const PORT = process.env.PORT || 5001;
 
-// Middleware
+// CORS middleware
 app.use(cors());
+
+// Better Auth handler (must be before express.json)
+app.all("/api/auth/{*any}", toNodeHandler(auth));
+
+// Body parser for other API routes
 app.use(express.json());
 
 // API routes
@@ -27,10 +35,10 @@ app.use((req, res) => {
   });
 });
 
-// Central error handler (must be registered last)
+// Central error handler
 app.use(errorHandler);
 
-// Start server and connect MongoDB
+// Connect database and start server
 async function startServer() {
   try {
     await connectDB();
