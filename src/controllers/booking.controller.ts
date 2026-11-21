@@ -1,7 +1,9 @@
 
 import { Request, Response, NextFunction } from "express";
+import { ObjectId } from "mongodb";
 import { connectDB } from "../config/db.js";
 
+// Create a new booking
 export const createBooking = async (
   req: Request,
   res: Response,
@@ -66,7 +68,8 @@ export const createBooking = async (
     if (overlappingBooking) {
       return res.status(409).json({
         success: false,
-        message: "This equipment is already booked for the selected dates.",
+        message:
+          "This equipment is already booked for the selected dates.",
       });
     }
 
@@ -101,6 +104,82 @@ export const createBooking = async (
         ...booking,
         _id: result.insertedId,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get bookings for the logged-in user
+export const getMyBookings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = res.locals.user;
+    const db = await connectDB();
+
+    const bookings = await db
+      .collection("bookings")
+      .find({ userId: user.id })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      message: "Your bookings retrieved successfully.",
+      total: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Cancel a pending booking
+export const cancelBooking = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id;
+    const user = res.locals.user;
+
+    if (typeof id !== "string" || !ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID.",
+      });
+    }
+
+    const db = await connectDB();
+
+    const result = await db.collection("bookings").updateOne(
+      {
+        _id: new ObjectId(id),
+        userId: user.id,
+        status: "pending",
+      },
+      {
+        $set: {
+          status: "cancelled",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found or cannot be cancelled.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking cancelled successfully.",
     });
   } catch (error) {
     next(error);
