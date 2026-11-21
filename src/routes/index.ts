@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { getHome } from "../controllers/home.controller.js";
 import { getHealth } from "../controllers/health.controller.js";
+import { getAllEquipment } from "../controllers/equipment.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -11,6 +12,9 @@ router.get("/", getHome);
 
 // Health check API
 router.get("/health", getHealth);
+
+// Get all equipment
+router.get("/equipment", getAllEquipment);
 
 // Protected user profile API
 router.get("/profile/me", requireAuth, (req, res) => {
