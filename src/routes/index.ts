@@ -13,7 +13,7 @@ router.get("/", getHome);
 router.get("/health", getHealth);
 
 // Protected user profile API
-router.get("/auth/me", requireAuth, (req, res) => {
+router.get("/profile/me", requireAuth, (req, res) => {
   res.status(200).json({
     success: true,
     message: "User profile retrieved successfully.",

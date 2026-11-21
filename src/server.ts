@@ -16,8 +16,12 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 // CORS middleware
-app.use(cors());
-
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
 // Better Auth handler (must be before express.json)
 app.all("/api/auth/{*any}", toNodeHandler(auth));
 
