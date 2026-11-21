@@ -1,6 +1,5 @@
 
 import { Request, Response, NextFunction } from "express";
-import { ObjectId } from "mongodb";
 import { connectDB } from "../config/db.js";
 
 export const createBooking = async (
@@ -77,7 +76,7 @@ export const createBooking = async (
     const totalPrice = totalDays * equipment.dailyRate;
 
     const booking = {
-      userId: new ObjectId(user.id),
+      userId: user.id,
       userName: user.name,
       userEmail: user.email,
       equipmentId: equipment._id,
