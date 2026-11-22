@@ -15,11 +15,13 @@ import {
 } from "../controllers/booking.controller.js";
 
 import { createCheckoutSession } from "../controllers/payment.controller.js";
+import { getAdminDashboard } from "../controllers/admin.controller.js";
 
 import {
   requireAuth,
   verifyCustomer,
   verifyOwner,
+  verifyAdmin,
 } from "../middleware/auth.middleware.js";
 
 import { validate } from "../middleware/validate.middleware.js";
@@ -27,16 +29,11 @@ import { createBookingSchema } from "../validations/booking.validation.js";
 
 const router = Router();
 
-// Home API
 router.get("/", getHome);
-
-// Health check API
 router.get("/health", getHealth);
 
-// Public equipment listing
 router.get("/equipment", getAllEquipment);
 
-// Owner equipment listing (owners only)
 router.get(
   "/owner/equipment",
   requireAuth,
@@ -44,7 +41,13 @@ router.get(
   getOwnerEquipment
 );
 
-// Create a booking (customers only)
+router.get(
+  "/admin/dashboard",
+  requireAuth,
+  verifyAdmin,
+  getAdminDashboard
+);
+
 router.post(
   "/bookings",
   requireAuth,
@@ -53,7 +56,6 @@ router.post(
   createBooking
 );
 
-// Get bookings for the logged-in customer
 router.get(
   "/bookings/my-bookings",
   requireAuth,
@@ -61,7 +63,6 @@ router.get(
   getMyBookings
 );
 
-// Cancel a pending booking (customers only)
 router.patch(
   "/bookings/:id/cancel",
   requireAuth,
@@ -69,7 +70,6 @@ router.patch(
   cancelBooking
 );
 
-// Create Stripe Checkout session (customers only)
 router.post(
   "/payments/create-checkout-session",
   requireAuth,
@@ -77,7 +77,6 @@ router.post(
   createCheckoutSession
 );
 
-// Protected user profile API
 router.get("/profile/me", requireAuth, (req, res) => {
   res.status(200).json({
     success: true,
