@@ -57,7 +57,7 @@ app.all("/api/auth/{*any}", toNodeHandler(auth));
 // Body parser
 app.use(express.json());
 
-// Temporary JWT verification test endpoint
+// General JWT verification test endpoint
 app.get("/api/jwt-test", requireJwtAuth, (req, res) => {
   res.status(200).json({
     success: true,
@@ -69,6 +69,45 @@ app.get("/api/jwt-test", requireJwtAuth, (req, res) => {
     },
   });
 });
+
+// Customer role test endpoint
+app.get(
+  "/api/jwt-test/customer",
+  ...verifyJwtCustomer,
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Customer access granted.",
+      role: res.locals.user.role,
+    });
+  }
+);
+
+// Owner role test endpoint
+app.get(
+  "/api/jwt-test/owner",
+  ...verifyJwtOwner,
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Owner access granted.",
+      role: res.locals.user.role,
+    });
+  }
+);
+
+// Admin role test endpoint
+app.get(
+  "/api/jwt-test/admin",
+  ...verifyJwtAdmin,
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: "Admin access granted.",
+      role: res.locals.user.role,
+    });
+  }
+);
 
 // API routes
 app.use("/api", apiRoutes);
