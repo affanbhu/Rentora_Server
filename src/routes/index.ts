@@ -10,7 +10,11 @@ import {
   cancelBooking,
 } from "../controllers/booking.controller.js";
 
-import { requireAuth } from "../middleware/auth.middleware.js";
+import {
+  requireAuth,
+  verifyCustomer,
+} from "../middleware/auth.middleware.js";
+
 import { validate } from "../middleware/validate.middleware.js";
 import { createBookingSchema } from "../validations/booking.validation.js";
 
@@ -22,24 +26,31 @@ router.get("/", getHome);
 // Health check API
 router.get("/health", getHealth);
 
-// Get all equipment
+// Public equipment listing
 router.get("/equipment", getAllEquipment);
 
-// Create a booking
+// Create a booking (customers only)
 router.post(
   "/bookings",
   requireAuth,
+  verifyCustomer,
   validate(createBookingSchema),
   createBooking
 );
 
-// Get bookings for the logged-in user
-router.get("/bookings/my-bookings", requireAuth, getMyBookings);
+// Get bookings for the logged-in customer
+router.get(
+  "/bookings/my-bookings",
+  requireAuth,
+  verifyCustomer,
+  getMyBookings
+);
 
-// Cancel a pending booking
+// Cancel a pending booking (customers only)
 router.patch(
   "/bookings/:id/cancel",
   requireAuth,
+  verifyCustomer,
   cancelBooking
 );
 
