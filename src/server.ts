@@ -8,7 +8,12 @@ import { auth } from "./config/auth.js";
 import { connectDB } from "./config/db.js";
 import apiRoutes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.middleware.js";
-import { requireJwtAuth } from "./middleware/auth.middleware.js";
+import {
+  requireJwtAuth,
+  verifyJwtCustomer,
+  verifyJwtOwner,
+  verifyJwtAdmin,
+} from "./middleware/auth.middleware.js";
 
 dotenv.config();
 
