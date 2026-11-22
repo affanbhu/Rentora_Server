@@ -8,12 +8,6 @@ import { auth } from "./config/auth.js";
 import { connectDB } from "./config/db.js";
 import apiRoutes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.middleware.js";
-import {
-  requireJwtAuth,
-  verifyJwtCustomer,
-  verifyJwtOwner,
-  verifyJwtAdmin,
-} from "./middleware/auth.middleware.js";
 
 dotenv.config();
 
@@ -56,58 +50,6 @@ app.all("/api/auth/{*any}", toNodeHandler(auth));
 
 // Body parser
 app.use(express.json());
-
-// General JWT verification test endpoint
-app.get("/api/jwt-test", requireJwtAuth, (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "JWT verified successfully.",
-    user: {
-      id: res.locals.user.id,
-      email: res.locals.user.email,
-      role: res.locals.user.role,
-    },
-  });
-});
-
-// Customer role test endpoint
-app.get(
-  "/api/jwt-test/customer",
-  ...verifyJwtCustomer,
-  (req, res) => {
-    res.status(200).json({
-      success: true,
-      message: "Customer access granted.",
-      role: res.locals.user.role,
-    });
-  }
-);
-
-// Owner role test endpoint
-app.get(
-  "/api/jwt-test/owner",
-  ...verifyJwtOwner,
-  (req, res) => {
-    res.status(200).json({
-      success: true,
-      message: "Owner access granted.",
-      role: res.locals.user.role,
-    });
-  }
-);
-
-// Admin role test endpoint
-app.get(
-  "/api/jwt-test/admin",
-  ...verifyJwtAdmin,
-  (req, res) => {
-    res.status(200).json({
-      success: true,
-      message: "Admin access granted.",
-      role: res.locals.user.role,
-    });
-  }
-);
 
 // API routes
 app.use("/api", apiRoutes);
