@@ -8,6 +8,7 @@ import { auth } from "./config/auth.js";
 import { connectDB } from "./config/db.js";
 import apiRoutes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.middleware.js";
+import { handleStripeWebhook } from "./controllers/payment.controller.js";
 
 dotenv.config();
 
@@ -47,6 +48,13 @@ app.use(async (req, res, next) => {
 
 // Better Auth handler
 app.all("/api/auth/{*any}", toNodeHandler(auth));
+
+// Stripe webhook - raw body required for signature verification
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
 
 // Body parser
 app.use(express.json());

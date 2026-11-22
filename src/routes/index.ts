@@ -10,6 +10,8 @@ import {
   cancelBooking,
 } from "../controllers/booking.controller.js";
 
+import { createCheckoutSession } from "../controllers/payment.controller.js";
+
 import {
   requireAuth,
   verifyCustomer,
@@ -52,6 +54,14 @@ router.patch(
   requireAuth,
   verifyCustomer,
   cancelBooking
+);
+
+// Create Stripe Checkout session (customers only)
+router.post(
+  "/payments/create-checkout-session",
+  requireAuth,
+  verifyCustomer,
+  createCheckoutSession
 );
 
 // Protected user profile API
