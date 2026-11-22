@@ -16,6 +16,8 @@ import {
 import {
   createBooking,
   getMyBookings,
+  getOwnerBookings,
+  updateOwnerBookingStatus,
   cancelBooking,
 } from "../controllers/booking.controller.js";
 
