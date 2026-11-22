@@ -1,7 +1,10 @@
 
 import { Router } from "express";
+import multer from "multer";
+
 import { getHome } from "../controllers/home.controller.js";
 import { getHealth } from "../controllers/health.controller.js";
+import { uploadProfilePhoto } from "../controllers/upload.controller.js";
 
 import {
   getAllEquipment,
@@ -29,8 +32,38 @@ import { createBookingSchema } from "../validations/booking.validation.js";
 
 const router = Router();
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
+      callback(null, true);
+    } else {
+      callback(
+        new Error("Only JPG, PNG, WebP, and GIF images are allowed.")
+      );
+    }
+  },
+});
+
 router.get("/", getHome);
 router.get("/health", getHealth);
+
+// Profile photo upload (available before registration)
+router.post(
+  "/upload/profile-photo",
+  upload.single("image"),
+  uploadProfilePhoto
+);
 
 router.get("/equipment", getAllEquipment);
 
