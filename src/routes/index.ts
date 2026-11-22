@@ -2,7 +2,11 @@
 import { Router } from "express";
 import { getHome } from "../controllers/home.controller.js";
 import { getHealth } from "../controllers/health.controller.js";
-import { getAllEquipment } from "../controllers/equipment.controller.js";
+
+import {
+  getAllEquipment,
+  getOwnerEquipment,
+} from "../controllers/equipment.controller.js";
 
 import {
   createBooking,
@@ -15,6 +19,7 @@ import { createCheckoutSession } from "../controllers/payment.controller.js";
 import {
   requireAuth,
   verifyCustomer,
+  verifyOwner,
 } from "../middleware/auth.middleware.js";
 
 import { validate } from "../middleware/validate.middleware.js";
@@ -30,6 +35,14 @@ router.get("/health", getHealth);
 
 // Public equipment listing
 router.get("/equipment", getAllEquipment);
+
+// Owner equipment listing (owners only)
+router.get(
+  "/owner/equipment",
+  requireAuth,
+  verifyOwner,
+  getOwnerEquipment
+);
 
 // Create a booking (customers only)
 router.post(
