@@ -1,11 +1,21 @@
 
 import { Request, Response, NextFunction } from "express";
 import { fromNodeHeaders } from "better-auth/node";
+import { jwtVerify, createRemoteJWKSet } from "jose";
 import { auth } from "../config/auth.js";
 
 type UserRole = "customer" | "owner" | "admin";
 
-// Protect routes that require an authenticated user
+const authBaseURL = (
+  process.env.BETTER_AUTH_URL || "http://localhost:5001"
+).replace(/\/$/, "");
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${authBaseURL}/api/auth/jwks`)
+);
+
+// Existing cookie-based authentication.
+// Keep this working for existing routes.
 export const requireAuth = async (
   req: Request,
   res: Response,
@@ -26,9 +36,10 @@ export const requireAuth = async (
     res.locals.session = session;
     res.locals.user = {
       ...session.user,
-      role: (session.user as typeof session.user & {
-        role?: UserRole;
-      }).role || "customer",
+      role:
+        (session.user as typeof session.user & {
+          role?: UserRole;
+        }).role || "customer",
     };
 
     next();
@@ -37,7 +48,69 @@ export const requireAuth = async (
   }
 };
 
-// Restrict access to a specific role
+// New JWT-based authentication.
+export const requireJwtAuth = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authorization = req.headers.authorization;
+
+    if (!authorization?.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Missing or invalid authorization token.",
+      });
+    }
+
+    const token = authorization.slice(7).trim();
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Missing authorization token.",
+      });
+    }
+
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: authBaseURL,
+      audience: authBaseURL,
+    });
+
+    const userId = payload.id || payload.sub;
+
+    if (typeof userId !== "string" || !userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token user information.",
+      });
+    }
+
+    const role: UserRole =
+      payload.role === "owner" || payload.role === "admin"
+        ? payload.role
+        : "customer";
+
+    res.locals.user = {
+      id: userId,
+      email:
+        typeof payload.email === "string" ? payload.email : undefined,
+      role,
+    };
+
+    res.locals.jwtPayload = payload;
+
+    next();
+  } catch {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired JWT.",
+    });
+  }
+};
+
+// Restrict access to a specific role.
 const allowRoles = (...roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const user = res.locals.user;
@@ -60,7 +133,23 @@ const allowRoles = (...roles: UserRole[]) => {
   };
 };
 
-// Role-specific middleware
+// Existing cookie-based role middleware.
 export const verifyCustomer = allowRoles("customer");
 export const verifyOwner = allowRoles("owner");
 export const verifyAdmin = allowRoles("admin");
+
+// JWT-based role middleware.
+export const verifyJwtCustomer = [
+  requireJwtAuth,
+  allowRoles("customer"),
+];
+
+export const verifyJwtOwner = [
+  requireJwtAuth,
+  allowRoles("owner"),
+];
+
+export const verifyJwtAdmin = [
+  requireJwtAuth,
+  allowRoles("admin"),
+];

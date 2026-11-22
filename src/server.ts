@@ -8,6 +8,7 @@ import { auth } from "./config/auth.js";
 import { connectDB } from "./config/db.js";
 import apiRoutes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.middleware.js";
+import { requireJwtAuth } from "./middleware/auth.middleware.js";
 
 dotenv.config();
 
@@ -50,6 +51,19 @@ app.all("/api/auth/{*any}", toNodeHandler(auth));
 
 // Body parser
 app.use(express.json());
+
+// Temporary JWT verification test endpoint
+app.get("/api/jwt-test", requireJwtAuth, (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "JWT verified successfully.",
+    user: {
+      id: res.locals.user.id,
+      email: res.locals.user.email,
+      role: res.locals.user.role,
+    },
+  });
+});
 
 // API routes
 app.use("/api", apiRoutes);
