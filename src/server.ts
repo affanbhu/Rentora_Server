@@ -12,20 +12,43 @@ import { errorHandler } from "./middleware/error.middleware.js";
 dotenv.config();
 
 const app = express();
-
 const PORT = process.env.PORT || 5001;
 
-// CORS middleware
+const allowedOrigins = (
+  process.env.CORS_ORIGINS || "http://localhost:3000"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+// CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
-// Better Auth handler (must be before express.json)
+
+// Ensure MongoDB is connected before handling requests
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Better Auth handler
 app.all("/api/auth/{*any}", toNodeHandler(auth));
 
-// Body parser for other API routes
+// Body parser
 app.use(express.json());
 
 // API routes
@@ -42,18 +65,12 @@ app.use((req, res) => {
 // Central error handler
 app.use(errorHandler);
 
-// Connect database and start server
-async function startServer() {
-  try {
-    await connectDB();
-
-    app.listen(PORT, () => {
-      console.log(`Rentora server is running on http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error("Failed to start Rentora server:", error);
-    process.exit(1);
-  }
+// Local development server
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Rentora server is running on http://localhost:${PORT}`);
+  });
 }
 
-startServer();
+// Vercel serverless entry point
+export default app;
