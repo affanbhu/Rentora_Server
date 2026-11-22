@@ -22,6 +22,14 @@ export const auth = betterAuth({
 
   trustedOrigins,
 
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+      httpOnly: true,
+    },
+  },
+
   user: {
     additionalFields: {
       role: {
