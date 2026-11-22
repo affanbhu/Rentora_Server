@@ -1,10 +1,10 @@
-
 import { Router } from "express";
 import multer from "multer";
 
 import { getHome } from "../controllers/home.controller.js";
 import { getHealth } from "../controllers/health.controller.js";
 import { uploadProfilePhoto } from "../controllers/upload.controller.js";
+import { updateProfile } from "../controllers/profile.controller.js";
 
 import {
   getAllEquipment,
@@ -58,7 +58,6 @@ const upload = multer({
 router.get("/", getHome);
 router.get("/health", getHealth);
 
-// Profile photo upload (available before registration)
 router.post(
   "/upload/profile-photo",
   upload.single("image"),
@@ -117,5 +116,7 @@ router.get("/profile/me", requireAuth, (req, res) => {
     user: res.locals.user,
   });
 });
+
+router.patch("/profile/me", requireAuth, updateProfile);
 
 export default router;

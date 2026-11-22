@@ -1,4 +1,3 @@
-
 import "dotenv/config";
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
@@ -38,6 +37,16 @@ export const auth = betterAuth({
         required: false,
         defaultValue: "customer",
         input: false,
+      },
+      phoneNumber: {
+        type: "string",
+        required: false,
+        input: true,
+      },
+      address: {
+        type: "string",
+        required: false,
+        input: true,
       },
     },
   },
