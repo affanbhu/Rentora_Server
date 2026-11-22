@@ -8,7 +8,9 @@ import { updateProfile } from "../controllers/profile.controller.js";
 
 import {
   getAllEquipment,
+  getFeaturedEquipment,
   getOwnerEquipment,
+  createEquipment,
 } from "../controllers/equipment.controller.js";
 
 import {
@@ -29,6 +31,7 @@ import {
 
 import { validate } from "../middleware/validate.middleware.js";
 import { createBookingSchema } from "../validations/booking.validation.js";
+import { createEquipmentSchema } from "../validations/equipment.validation.js";
 
 const router = Router();
 
@@ -64,7 +67,17 @@ router.post(
   uploadProfilePhoto
 );
 
+router.get("/equipment/featured", getFeaturedEquipment);
 router.get("/equipment", getAllEquipment);
+
+// Only authenticated owners can add equipment.
+router.post(
+  "/equipment",
+  requireAuth,
+  verifyOwner,
+  validate(createEquipmentSchema),
+  createEquipment
+);
 
 router.get(
   "/owner/equipment",
