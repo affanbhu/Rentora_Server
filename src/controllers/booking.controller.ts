@@ -10,7 +10,15 @@ export const createBooking = async (
   next: NextFunction
 ) => {
   try {
-    const { equipmentSlug, startDate, endDate } = req.body;
+    const {
+      equipmentSlug,
+      startDate,
+      endDate,
+      quantity,
+      phone,
+      deliveryAddress,
+      notes = "",
+    } = req.body;
     const user = res.locals.user;
 
     const start = new Date(startDate);
@@ -70,6 +78,19 @@ export const createBooking = async (
       });
     }
 
+    const availableQuantity = Number(equipment.availableQuantity ?? 1);
+
+    if (
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > availableQuantity
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Please select a quantity between 1 and ${availableQuantity}.`,
+      });
+    }
+
     const overlappingBooking = await db.collection("bookings").findOne({
       equipmentSlug,
       status: { $in: ["pending", "confirmed"] },
@@ -87,7 +108,7 @@ export const createBooking = async (
     const totalDays =
       Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 
-    const totalPrice = totalDays * equipment.dailyRate;
+    const totalPrice = totalDays * equipment.dailyRate * quantity;
 
     const booking = {
       userId: user.id,
@@ -101,6 +122,10 @@ export const createBooking = async (
       startDate,
       endDate,
       totalDays,
+      quantity,
+      phone,
+      deliveryAddress,
+      notes,
       dailyRate: equipment.dailyRate,
       totalPrice,
       status: "pending",

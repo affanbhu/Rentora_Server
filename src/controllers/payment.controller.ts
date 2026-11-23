@@ -142,7 +142,21 @@ export const handleStripeWebhook = async (
         return res.status(404).send("Booking not found.");
       }
 
+      // Verify that this Stripe session belongs to the correct booking and customer.
       if (
+        session.mode !== "payment" ||
+        session.client_reference_id !== bookingId ||
+        !session.metadata?.userId ||
+        session.metadata.userId !== String(booking.userId)
+      ) {
+        return res.status(400).send("Stripe session does not match booking.");
+      }
+
+      // Verify the booking amount and Stripe payment amount.
+      if (
+        typeof booking.totalPrice !== "number" ||
+        !Number.isSafeInteger(booking.totalPrice) ||
+        booking.totalPrice <= 0 ||
         session.currency !== "bdt" ||
         session.amount_total !== booking.totalPrice * 100
       ) {

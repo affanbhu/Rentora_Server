@@ -12,8 +12,13 @@ import {
   getFeaturedEquipment,
   getOwnerEquipment,
   createEquipment,
+  updateOwnerEquipment,
+  deleteOwnerEquipment,
   getPendingEquipment,
   updateEquipmentApproval,
+  getAllAdminEquipment,
+  updateAdminEquipment,
+  deleteAdminEquipment,
 } from "../controllers/equipment.controller.js";
 
 import {
@@ -31,11 +36,15 @@ import {
 } from "../controllers/review.controller.js";
 
 import { createCheckoutSession } from "../controllers/payment.controller.js";
+import { getOwnerAnalytics } from "../controllers/owner-analytics.controller.js";
+import { getFavorites, addFavorite, removeFavorite } from "../controllers/favorites.controller.js";
 
 import {
   getAdminDashboard,
   getAdminUsers,
   updateUserRole,
+  getAdminBookings,
+  updateAdminBookingStatus,
 } from "../controllers/admin.controller.js";
 
 import {
@@ -47,7 +56,12 @@ import {
 
 import { validate } from "../middleware/validate.middleware.js";
 import { createBookingSchema } from "../validations/booking.validation.js";
-import { createEquipmentSchema } from "../validations/equipment.validation.js";
+
+import {
+  createEquipmentSchema,
+  updateEquipmentSchema,
+} from "../validations/equipment.validation.js";
+
 import { createReviewSchema } from "../validations/review.validation.js";
 
 const router = Router();
@@ -102,7 +116,7 @@ router.post(
   createReview
 );
 
-// Equipment management
+// Owner equipment management
 router.post(
   "/equipment",
   requireAuth,
@@ -118,7 +132,22 @@ router.get(
   getOwnerEquipment
 );
 
-// Admin routes
+router.patch(
+  "/owner/equipment/:id",
+  requireAuth,
+  verifyOwner,
+  validate(updateEquipmentSchema),
+  updateOwnerEquipment
+);
+
+router.delete(
+  "/owner/equipment/:id",
+  requireAuth,
+  verifyOwner,
+  deleteOwnerEquipment
+);
+
+// Admin dashboard
 router.get(
   "/admin/dashboard",
   requireAuth,
@@ -126,6 +155,7 @@ router.get(
   getAdminDashboard
 );
 
+// Admin user management
 router.get(
   "/admin/users",
   requireAuth,
@@ -138,6 +168,44 @@ router.patch(
   requireAuth,
   verifyAdmin,
   updateUserRole
+);
+
+// Admin rental management
+router.get(
+  "/admin/bookings",
+  requireAuth,
+  verifyAdmin,
+  getAdminBookings
+);
+
+router.patch(
+  "/admin/bookings/:id/status",
+  requireAuth,
+  verifyAdmin,
+  updateAdminBookingStatus
+);
+
+// Admin equipment management
+router.get(
+  "/admin/equipment",
+  requireAuth,
+  verifyAdmin,
+  getAllAdminEquipment
+);
+
+router.patch(
+  "/admin/equipment/:id",
+  requireAuth,
+  verifyAdmin,
+  validate(updateEquipmentSchema),
+  updateAdminEquipment
+);
+
+router.delete(
+  "/admin/equipment/:id",
+  requireAuth,
+  verifyAdmin,
+  deleteAdminEquipment
 );
 
 // Admin equipment approval
@@ -155,7 +223,13 @@ router.patch(
   updateEquipmentApproval
 );
 
-// Booking management
+
+// Customer favorites
+router.get("/favorites", requireAuth, verifyCustomer, getFavorites);
+router.post("/favorites/:equipmentId", requireAuth, verifyCustomer, addFavorite);
+router.delete("/favorites/:equipmentId", requireAuth, verifyCustomer, removeFavorite);
+
+// Customer booking management
 router.post(
   "/bookings",
   requireAuth,
@@ -176,6 +250,14 @@ router.patch(
   requireAuth,
   verifyCustomer,
   cancelBooking
+);
+
+// Owner analytics
+router.get(
+  "/owner/analytics",
+  requireAuth,
+  verifyOwner,
+  getOwnerAnalytics
 );
 
 // Owner booking requests

@@ -247,6 +247,12 @@ export const createEquipment = async (
       dailyRate: input.dailyRate,
       location: input.location,
       imageUrl: input.imageUrl,
+      rentalType: input.rentalType,
+      availableQuantity: input.availableQuantity,
+      condition: input.condition,
+      brand: input.brand,
+      model: input.model,
+      terms: input.terms,
       availability: "Available",
       approvalStatus: "pending",
       ownerId: user.id,
@@ -355,6 +361,269 @@ export const updateEquipmentApproval = async (
         equipmentId,
         approvalStatus,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update equipment belonging to the authenticated owner.
+export const updateOwnerEquipment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = res.locals.user as { id: string };
+    const equipmentId = String(req.params.id ?? "");
+    const input = req.body as CreateEquipmentInput;
+
+    if (!ObjectId.isValid(equipmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid equipment ID.",
+      });
+    }
+
+    const db = await connectDB();
+
+    const result = await db.collection("equipment").updateOne(
+      {
+        _id: new ObjectId(equipmentId),
+        ownerId: user.id,
+      },
+      {
+        $set: {
+          name: input.name,
+          category: input.category,
+          description: input.description,
+          dailyRate: input.dailyRate,
+          location: input.location,
+          imageUrl: input.imageUrl,
+          rentalType: input.rentalType,
+          availableQuantity: input.availableQuantity,
+          condition: input.condition,
+          brand: input.brand,
+          model: input.model,
+          terms: input.terms,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Equipment not found or you do not own this equipment.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Equipment updated successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete equipment belonging to the authenticated owner.
+export const deleteOwnerEquipment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = res.locals.user as { id: string };
+    const equipmentId = String(req.params.id ?? "");
+
+    if (!ObjectId.isValid(equipmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid equipment ID.",
+      });
+    }
+
+    const db = await connectDB();
+    const equipmentCollection = db.collection("equipment");
+
+    const equipment = await equipmentCollection.findOne({
+      _id: new ObjectId(equipmentId),
+      ownerId: user.id,
+    });
+
+    if (!equipment) {
+      return res.status(404).json({
+        success: false,
+        message: "Equipment not found or you do not own this equipment.",
+      });
+    }
+
+    const activeBooking = await db.collection("bookings").findOne({
+      $or: [
+        { equipmentId: equipment._id },
+        { equipmentSlug: equipment.slug },
+      ],
+      status: { $in: ["pending", "confirmed"] },
+    });
+
+    if (activeBooking) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This equipment cannot be deleted because it has pending or confirmed bookings.",
+      });
+    }
+
+    await equipmentCollection.deleteOne({
+      _id: equipment._id,
+      ownerId: user.id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Equipment deleted successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all equipment for admin management.
+export const getAllAdminEquipment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const db = await connectDB();
+
+    const equipment = await db
+      .collection("equipment")
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      message: "All equipment retrieved successfully.",
+      total: equipment.length,
+      data: equipment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update any equipment as an administrator.
+export const updateAdminEquipment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const equipmentId = String(req.params.id ?? "");
+    const input = req.body as CreateEquipmentInput;
+
+    if (!ObjectId.isValid(equipmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid equipment ID.",
+      });
+    }
+
+    const db = await connectDB();
+
+    const result = await db.collection("equipment").updateOne(
+      { _id: new ObjectId(equipmentId) },
+      {
+        $set: {
+          name: input.name,
+          category: input.category,
+          description: input.description,
+          dailyRate: input.dailyRate,
+          location: input.location,
+          imageUrl: input.imageUrl,
+          rentalType: input.rentalType,
+          availableQuantity: input.availableQuantity,
+          condition: input.condition,
+          brand: input.brand,
+          model: input.model,
+          terms: input.terms,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Equipment not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Equipment updated successfully by admin.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete any equipment as an administrator.
+export const deleteAdminEquipment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const equipmentId = String(req.params.id ?? "");
+
+    if (!ObjectId.isValid(equipmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid equipment ID.",
+      });
+    }
+
+    const db = await connectDB();
+    const equipmentCollection = db.collection("equipment");
+
+    const equipment = await equipmentCollection.findOne({
+      _id: new ObjectId(equipmentId),
+    });
+
+    if (!equipment) {
+      return res.status(404).json({
+        success: false,
+        message: "Equipment not found.",
+      });
+    }
+
+    const activeBooking = await db.collection("bookings").findOne({
+      $or: [
+        { equipmentId: equipment._id },
+        { equipmentSlug: equipment.slug },
+      ],
+      status: { $in: ["pending", "confirmed"] },
+    });
+
+    if (activeBooking) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This equipment cannot be deleted because it has pending or confirmed bookings.",
+      });
+    }
+
+    await equipmentCollection.deleteOne({
+      _id: equipment._id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Equipment deleted successfully by admin.",
     });
   } catch (error) {
     next(error);

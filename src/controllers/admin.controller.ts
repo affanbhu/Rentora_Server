@@ -25,6 +25,9 @@ export const getAdminDashboard = async (
       pendingBookings,
       confirmedBookings,
       paidBookings,
+      completedBookings,
+      totalRevenueResult,
+      monthlyBookings,
       recentUsers,
       recentBookings,
       recentEquipment,
@@ -44,6 +47,34 @@ export const getAdminDashboard = async (
       bookingsCollection.countDocuments({ status: "pending" }),
       bookingsCollection.countDocuments({ status: "confirmed" }),
       bookingsCollection.countDocuments({ paymentStatus: "paid" }),
+      bookingsCollection.countDocuments({ status: "completed" }),
+      bookingsCollection.aggregate([
+        { $match: { paymentStatus: "paid" } },
+        { $group: { _id: null, total: { $sum: "$totalPrice" } } },
+      ]).toArray(),
+      bookingsCollection.aggregate([
+        {
+          $match: {
+            createdAt: {
+              $gte: new Date(
+                new Date().getFullYear(),
+                new Date().getMonth() - 5,
+                1
+              ),
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+            },
+            bookings: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+      ]).toArray(),
 
       usersCollection
         .find(
@@ -86,7 +117,10 @@ export const getAdminDashboard = async (
         pendingBookings,
         confirmedBookings,
         paidBookings,
+        completedBookings,
+        totalRevenue: Number(totalRevenueResult[0]?.total || 0),
       },
+      monthlyBookings,
       recentUsers,
       recentBookings,
       recentEquipment,
@@ -212,6 +246,98 @@ export const updateUserRole = async (
       data: {
         userId: targetUserId,
         role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all bookings for admin rental management.
+export const getAdminBookings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const db = await connectDB();
+
+    const bookings = await db
+      .collection("bookings")
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      message: "All rental bookings retrieved successfully.",
+      total: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Update a booking status as an administrator.
+export const updateAdminBookingStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const bookingId = String(req.params.id ?? "");
+    const { status } = req.body as { status?: string };
+
+    const allowedStatuses = [
+      "confirmed",
+      "rejected",
+      "cancelled",
+    ];
+
+    if (!ObjectId.isValid(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID.",
+      });
+    }
+
+    if (!status || !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid booking status.",
+      });
+    }
+
+    const db = await connectDB();
+    const bookingsCollection = db.collection("bookings");
+
+    const result = await bookingsCollection.updateOne(
+      {
+        _id: new ObjectId(bookingId),
+        status: "pending",
+      },
+      {
+        $set: {
+          status,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found or it is no longer pending.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Booking ${status} successfully.`,
+      data: {
+        bookingId,
+        status,
       },
     });
   } catch (error) {
