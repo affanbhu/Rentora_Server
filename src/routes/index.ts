@@ -1,3 +1,4 @@
+
 import { Router } from "express";
 import multer from "multer";
 
@@ -11,6 +12,8 @@ import {
   getFeaturedEquipment,
   getOwnerEquipment,
   createEquipment,
+  getPendingEquipment,
+  updateEquipmentApproval,
 } from "../controllers/equipment.controller.js";
 
 import {
@@ -21,8 +24,19 @@ import {
   cancelBooking,
 } from "../controllers/booking.controller.js";
 
+import {
+  createReview,
+  getEquipmentReviews,
+  getRecentReviews,
+} from "../controllers/review.controller.js";
+
 import { createCheckoutSession } from "../controllers/payment.controller.js";
-import { getAdminDashboard } from "../controllers/admin.controller.js";
+
+import {
+  getAdminDashboard,
+  getAdminUsers,
+  updateUserRole,
+} from "../controllers/admin.controller.js";
 
 import {
   requireAuth,
@@ -34,6 +48,7 @@ import {
 import { validate } from "../middleware/validate.middleware.js";
 import { createBookingSchema } from "../validations/booking.validation.js";
 import { createEquipmentSchema } from "../validations/equipment.validation.js";
+import { createReviewSchema } from "../validations/review.validation.js";
 
 const router = Router();
 
@@ -60,19 +75,34 @@ const upload = multer({
   },
 });
 
+// Home and health
 router.get("/", getHome);
 router.get("/health", getHealth);
 
+// Profile photo upload
 router.post(
   "/upload/profile-photo",
   upload.single("image"),
   uploadProfilePhoto
 );
 
+// Public equipment routes
 router.get("/equipment/featured", getFeaturedEquipment);
 router.get("/equipment", getAllEquipment);
 
-// Only authenticated owners can add equipment.
+// Customer reviews
+router.get("/reviews/recent", getRecentReviews);
+router.get("/equipment/:slug/reviews", getEquipmentReviews);
+
+router.post(
+  "/reviews",
+  requireAuth,
+  verifyCustomer,
+  validate(createReviewSchema),
+  createReview
+);
+
+// Equipment management
 router.post(
   "/equipment",
   requireAuth,
@@ -88,6 +118,7 @@ router.get(
   getOwnerEquipment
 );
 
+// Admin routes
 router.get(
   "/admin/dashboard",
   requireAuth,
@@ -95,6 +126,36 @@ router.get(
   getAdminDashboard
 );
 
+router.get(
+  "/admin/users",
+  requireAuth,
+  verifyAdmin,
+  getAdminUsers
+);
+
+router.patch(
+  "/admin/users/:id/role",
+  requireAuth,
+  verifyAdmin,
+  updateUserRole
+);
+
+// Admin equipment approval
+router.get(
+  "/admin/equipment/pending",
+  requireAuth,
+  verifyAdmin,
+  getPendingEquipment
+);
+
+router.patch(
+  "/admin/equipment/:id/approval",
+  requireAuth,
+  verifyAdmin,
+  updateEquipmentApproval
+);
+
+// Booking management
 router.post(
   "/bookings",
   requireAuth,
@@ -117,6 +178,22 @@ router.patch(
   cancelBooking
 );
 
+// Owner booking requests
+router.get(
+  "/owner/bookings",
+  requireAuth,
+  verifyOwner,
+  getOwnerBookings
+);
+
+router.patch(
+  "/owner/bookings/:id/status",
+  requireAuth,
+  verifyOwner,
+  updateOwnerBookingStatus
+);
+
+// Payments
 router.post(
   "/payments/create-checkout-session",
   requireAuth,
@@ -124,6 +201,7 @@ router.post(
   createCheckoutSession
 );
 
+// Profile
 router.get("/profile/me", requireAuth, (req, res) => {
   res.status(200).json({
     success: true,

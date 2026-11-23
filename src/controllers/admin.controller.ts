@@ -1,7 +1,9 @@
 
 import { Request, Response, NextFunction } from "express";
+import { ObjectId } from "mongodb";
 import { connectDB } from "../config/db.js";
 
+// Get admin dashboard statistics.
 export const getAdminDashboard = async (
   req: Request,
   res: Response,
@@ -27,10 +29,8 @@ export const getAdminDashboard = async (
       recentBookings,
       recentEquipment,
     ] = await Promise.all([
-      // Total registered users
       usersCollection.countDocuments(),
 
-      // Customers, including users without an explicitly stored role
       usersCollection.countDocuments({
         $or: [
           { role: "customer" },
@@ -38,25 +38,13 @@ export const getAdminDashboard = async (
         ],
       }),
 
-      // Total owners
       usersCollection.countDocuments({ role: "owner" }),
-
-      // Total equipment
       equipmentCollection.countDocuments(),
-
-      // Total bookings
       bookingsCollection.countDocuments(),
-
-      // Pending bookings
       bookingsCollection.countDocuments({ status: "pending" }),
-
-      // Confirmed bookings
       bookingsCollection.countDocuments({ status: "confirmed" }),
-
-      // Paid bookings
       bookingsCollection.countDocuments({ paymentStatus: "paid" }),
 
-      // Latest five users
       usersCollection
         .find(
           {},
@@ -73,14 +61,12 @@ export const getAdminDashboard = async (
         .limit(5)
         .toArray(),
 
-      // Latest five bookings
       bookingsCollection
         .find({})
         .sort({ createdAt: -1 })
         .limit(5)
         .toArray(),
 
-      // Latest five equipment records
       equipmentCollection
         .find({})
         .sort({ createdAt: -1 })
@@ -104,6 +90,129 @@ export const getAdminDashboard = async (
       recentUsers,
       recentBookings,
       recentEquipment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all registered users.
+export const getAdminUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const db = await connectDB();
+
+    const users = await db
+      .collection("user")
+      .find(
+        {},
+        {
+          projection: {
+            name: 1,
+            email: 1,
+            role: 1,
+            createdAt: 1,
+          },
+        }
+      )
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      message: "Users retrieved successfully.",
+      total: users.length,
+      data: users.map((user) => ({
+        ...user,
+        role: user.role || "customer",
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Change a user's role.
+export const updateUserRole = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const admin = res.locals.user as { id: string };
+    const targetUserId = String(req.params.id ?? "");
+    const { role } = req.body as { role?: string };
+
+    const allowedRoles = ["customer", "owner", "admin"];
+
+    if (!ObjectId.isValid(targetUserId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID.",
+      });
+    }
+
+    if (!role || !allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid role.",
+      });
+    }
+
+    if (String(admin.id) === targetUserId) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot change your own role.",
+      });
+    }
+
+    const db = await connectDB();
+    const usersCollection = db.collection("user");
+
+    const userFilter = {
+      _id: new ObjectId(targetUserId),
+    };
+
+    const targetUser = await usersCollection.findOne(userFilter);
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Prevent removing the last administrator.
+    if (targetUser.role === "admin" && role !== "admin") {
+      const adminCount = await usersCollection.countDocuments({
+        role: "admin",
+      });
+
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: "The last administrator cannot be demoted.",
+        });
+      }
+    }
+
+    await usersCollection.updateOne(userFilter, {
+      $set: {
+        role,
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User role updated successfully.",
+      data: {
+        userId: targetUserId,
+        role,
+      },
     });
   } catch (error) {
     next(error);

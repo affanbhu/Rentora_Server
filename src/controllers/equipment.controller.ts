@@ -1,13 +1,26 @@
+
 import { Request, Response, NextFunction } from "express";
+import { ObjectId } from "mongodb";
 import { connectDB } from "../config/db.js";
 import { CreateEquipmentInput } from "../validations/equipment.validation.js";
 
-// Read a single query-string value safely.
 const getQueryValue = (value: unknown): string => {
   return typeof value === "string" ? value.trim() : "";
 };
 
-// Get all equipment with server-side search, filtering, and sorting.
+// Keep existing AND conditions while adding new filters.
+const addAndCondition = (
+  filter: Record<string, unknown>,
+  condition: Record<string, unknown>
+) => {
+  const existing = Array.isArray(filter.$and)
+    ? filter.$and
+    : [];
+
+  filter.$and = [...existing, condition];
+};
+
+// Get all publicly approved equipment.
 export const getAllEquipment = async (
   req: Request,
   res: Response,
@@ -26,6 +39,14 @@ export const getAllEquipment = async (
     const sortBy = getQueryValue(req.query.sortBy);
 
     const filter: Record<string, unknown> = {};
+
+    // Approved equipment and older records without approvalStatus.
+    addAndCondition(filter, {
+      $or: [
+        { approvalStatus: "approved" },
+        { approvalStatus: { $exists: false } },
+      ],
+    });
 
     if (search) {
       filter.$or = [
@@ -51,15 +72,12 @@ export const getAllEquipment = async (
 
     if (rentalType && rentalType !== "All") {
       if (rentalType.toLowerCase() === "daily") {
-        filter.$and = [
-          ...(Array.isArray(filter.$and) ? filter.$and : []),
-          {
-            $or: [
-              { rentalType: { $regex: "^daily$", $options: "i" } },
-              { rentalType: { $exists: false } },
-            ],
-          },
-        ];
+        addAndCondition(filter, {
+          $or: [
+            { rentalType: { $regex: "^daily$", $options: "i" } },
+            { rentalType: { $exists: false } },
+          ],
+        });
       } else {
         filter.rentalType = {
           $regex: `^${rentalType}$`,
@@ -134,7 +152,13 @@ export const getFeaturedEquipment = async (
 
     const equipment = await db
       .collection("equipment")
-      .find({ availability: { $regex: "^available$", $options: "i" } })
+      .find({
+        availability: { $regex: "^available$", $options: "i" },
+        $or: [
+          { approvalStatus: "approved" },
+          { approvalStatus: { $exists: false } },
+        ],
+      })
       .sort({ createdAt: -1 })
       .limit(6)
       .toArray();
@@ -227,6 +251,7 @@ export const createEquipment = async (
       location: input.location,
       imageUrl: input.imageUrl,
       availability: "Available",
+      approvalStatus: "pending",
       ownerId: user.id,
       ownerName: user.name || "",
       ownerEmail: user.email || "",
@@ -238,10 +263,98 @@ export const createEquipment = async (
 
     return res.status(201).json({
       success: true,
-      message: "Equipment added successfully.",
+      message: "Equipment submitted successfully and is awaiting admin approval.",
       data: {
         ...newEquipment,
         _id: result.insertedId,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get equipment awaiting admin approval.
+export const getPendingEquipment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const db = await connectDB();
+
+    const equipment = await db
+      .collection("equipment")
+      .find({ approvalStatus: "pending" })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      message: "Pending equipment retrieved successfully.",
+      total: equipment.length,
+      data: equipment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Approve or reject equipment.
+export const updateEquipmentApproval = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const equipmentId = String(req.params.id ?? "");
+    const { approvalStatus } = req.body as {
+      approvalStatus?: string;
+    };
+
+    if (!ObjectId.isValid(equipmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid equipment ID.",
+      });
+    }
+
+    if (!["approved", "rejected"].includes(approvalStatus || "")) {
+      return res.status(400).json({
+        success: false,
+        message: "Approval status must be approved or rejected.",
+      });
+    }
+
+    const db = await connectDB();
+    const equipmentCollection = db.collection("equipment");
+
+    const result = await equipmentCollection.updateOne(
+      {
+        _id: new ObjectId(equipmentId),
+        approvalStatus: "pending",
+      },
+      {
+        $set: {
+          approvalStatus,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Pending equipment not found. It may already have been reviewed.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Equipment ${approvalStatus} successfully.`,
+      data: {
+        equipmentId,
+        approvalStatus,
       },
     });
   } catch (error) {

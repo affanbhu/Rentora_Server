@@ -1,3 +1,4 @@
+
 import { Request, Response, NextFunction } from "express";
 import { ObjectId } from "mongodb";
 import { connectDB } from "../config/db.js";
@@ -47,6 +48,18 @@ export const createBooking = async (
       return res.status(404).json({
         success: false,
         message: "Equipment not found.",
+      });
+    }
+
+    // Prevent bookings until an admin approves newly submitted equipment.
+    // Older equipment without approvalStatus remains compatible.
+    if (
+      equipment.approvalStatus &&
+      equipment.approvalStatus !== "approved"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "This equipment has not been approved for booking yet.",
       });
     }
 
