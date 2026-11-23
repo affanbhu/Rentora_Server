@@ -25,6 +25,17 @@ async function setupDatabase() {
 
     await db.collection("bookings").createIndex({ status: 1 });
 
+    // Favorites indexes
+    await db.collection("favorites").createIndex(
+      { userId: 1, equipmentId: 1 },
+      { unique: true, name: "unique_user_equipment_favorite" }
+    );
+
+    await db.collection("favorites").createIndex(
+      { userId: 1, createdAt: -1 },
+      { name: "favorites_by_user_created_at" }
+    );
+
     console.log("Database indexes created successfully!");
   } catch (error) {
     console.error("Database setup failed:", error);

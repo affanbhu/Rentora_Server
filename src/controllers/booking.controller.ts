@@ -116,6 +116,7 @@ export const createBooking = async (
       userEmail: user.email,
       ownerId: equipment.ownerId || null,
       ownerName: equipment.ownerName || "",
+      ownerEmail: equipment.ownerEmail || "",
       equipmentId: equipment._id,
       equipmentSlug,
       equipmentName: equipment.name,

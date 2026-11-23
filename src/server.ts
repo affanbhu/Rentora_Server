@@ -9,6 +9,8 @@ import { connectDB } from "./config/db.js";
 import apiRoutes from "./routes/index.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { handleStripeWebhook } from "./controllers/payment.controller.js";
+import cron from "node-cron";
+import { completeExpiredBookings } from "./services/booking-cron.service.js";
 
 dotenv.config();
 
@@ -78,6 +80,20 @@ if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Rentora server is running on http://localhost:${PORT}`);
   });
+
+  // Local/persistent server scheduler: every day at 12:10 AM Bangladesh time.
+  cron.schedule(
+    "10 0 * * *",
+    async () => {
+      try {
+        const result = await completeExpiredBookings();
+        console.log("Daily booking completion job:", result);
+      } catch (error) {
+        console.error("Daily booking completion job failed:", error);
+      }
+    },
+    { timezone: "Asia/Dhaka" }
+  );
 }
 
 // Vercel serverless entry point

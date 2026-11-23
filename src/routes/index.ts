@@ -4,6 +4,7 @@ import multer from "multer";
 
 import { getHome } from "../controllers/home.controller.js";
 import { getHealth } from "../controllers/health.controller.js";
+import { runBookingCompletionCron } from "../controllers/cron.controller.js";
 import { uploadProfilePhoto } from "../controllers/upload.controller.js";
 import { updateProfile } from "../controllers/profile.controller.js";
 
@@ -92,6 +93,9 @@ const upload = multer({
 // Home and health
 router.get("/", getHome);
 router.get("/health", getHealth);
+
+// Protected scheduled booking completion job
+router.get("/cron/complete-bookings", runBookingCompletionCron);
 
 // Profile photo upload
 router.post(

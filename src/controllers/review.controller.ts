@@ -32,7 +32,7 @@ export const createReview = async (
       _id: new ObjectId(input.bookingId),
       userId: user.id,
       paymentStatus: "paid",
-      status: "confirmed",
+      status: { $in: ["confirmed", "completed"] },
     });
 
     if (!booking) {
