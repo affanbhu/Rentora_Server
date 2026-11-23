@@ -141,7 +141,7 @@ export const getAllEquipment = async (
   }
 };
 
-// Get six available featured equipment items.
+// Get exactly six available and approved featured equipment items.
 export const getFeaturedEquipment = async (
   req: Request,
   res: Response,
@@ -153,11 +153,8 @@ export const getFeaturedEquipment = async (
     const equipment = await db
       .collection("equipment")
       .find({
+        approvalStatus: "approved",
         availability: { $regex: "^available$", $options: "i" },
-        $or: [
-          { approvalStatus: "approved" },
-          { approvalStatus: { $exists: false } },
-        ],
       })
       .sort({ createdAt: -1 })
       .limit(6)
@@ -263,7 +260,8 @@ export const createEquipment = async (
 
     return res.status(201).json({
       success: true,
-      message: "Equipment submitted successfully and is awaiting admin approval.",
+      message:
+        "Equipment submitted successfully and is awaiting admin approval.",
       data: {
         ...newEquipment,
         _id: result.insertedId,
@@ -345,7 +343,8 @@ export const updateEquipmentApproval = async (
     if (result.matchedCount === 0) {
       return res.status(404).json({
         success: false,
-        message: "Pending equipment not found. It may already have been reviewed.",
+        message:
+          "Pending equipment not found. It may already have been reviewed.",
       });
     }
 
